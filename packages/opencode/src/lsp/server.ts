@@ -18,7 +18,10 @@ export namespace LSPServer {
   export interface Info {
     id: string
     extensions: string[]
-    spawn(app: App.Info): Promise<Handle | undefined>
+    spawn(
+      app: App.Info,
+      config?: Record<string, any>,
+    ): Promise<Handle | undefined>
   }
 
   export const Typescript: Info = {
@@ -199,6 +202,48 @@ export namespace LSPServer {
 
       return {
         process: spawn(binary),
+      }
+    },
+  }
+
+  export const RustAnalyzer: Info = {
+    id: "rust-analyzer",
+    extensions: [".rs"],
+    async spawn(_app, config) {
+      const bin = Bun.which("rust-analyzer")
+      if (!bin) return
+
+      // rustup does weird symlinking making it seem like 'rust-analyzer' is always in path
+      // despite not being installed. so we check if it's actually installed
+      const check = await $`${bin} --version`.quiet().nothrow()
+
+      if (check.exitCode !== 0) {
+        // rust-analyzer not installed, try to install it
+        if (!Bun.which("rustup")) return
+
+        log.info("installing rust-analyzer")
+        const install = await $`rustup component add rust-analyzer`
+          .quiet()
+          .nothrow()
+        if (install.exitCode !== 0) {
+          log.error("Failed to install rust-analyzer")
+          return
+        }
+        log.info("installed rust-analyzer")
+      }
+
+      return {
+        process: spawn(bin),
+        initialization: config || {
+          cargo: {
+            buildScripts: {
+              enable: true,
+            },
+          },
+          procMacro: {
+            enable: true,
+          },
+        },
       }
     },
   }

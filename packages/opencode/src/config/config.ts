@@ -176,6 +176,10 @@ export namespace Config {
         .record(z.string(), Mcp)
         .optional()
         .describe("MCP (Model Context Protocol) server configurations"),
+      lsp: z
+        .record(z.string(), z.record(z.any()))
+        .optional()
+        .describe("LSP (Language Server Protocol) initialization options"),
       instructions: z
         .array(z.string())
         .optional()

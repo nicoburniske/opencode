@@ -5,6 +5,7 @@ import path from "path"
 import { LSPServer } from "./server"
 import { Ripgrep } from "../file/ripgrep"
 import { z } from "zod"
+import { Config } from "../config/config"
 
 export namespace LSP {
   const log = Log.create({ service: "lsp" })
@@ -36,6 +37,7 @@ export namespace LSP {
     "lsp",
     async (app) => {
       log.info("initializing")
+      const config = await Config.state()
       const clients = new Map<string, LSPClient.Info>()
       for (const server of Object.values(LSPServer)) {
         for (const extension of server.extensions) {
@@ -44,7 +46,8 @@ export namespace LSP {
             glob: "*" + extension,
           })
           if (!file) continue
-          const handle = await server.spawn(App.info())
+          const lspConfig = config.lsp?.[server.id]
+          const handle = await server.spawn(App.info(), lspConfig)
           if (!handle) break
           const client = await LSPClient.create(server.id, handle).catch(
             (err) => log.error("", { error: err }),
